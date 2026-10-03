@@ -1,18 +1,15 @@
+@"
 # Dependencies
 node_modules/
-
-# Next.js
-.next/
-out/
-
-# Build output
-dist/
-build/
 
 # Environment variables
 .env
 .env.*
 !.env.example
+
+# Build output
+dist/
+build/
 
 # Logs
 *.log
@@ -32,17 +29,21 @@ Thumbs.db
 prisma/*.db
 prisma/*.db-journal
 
+# Prisma generated client
+src/generated/prisma/
+
 # Coverage
 coverage/
 
-# Turbo / tooling
+# Turbo
 .turbo/
 
 # Docker
 docker-compose.override.yml
-# Prisma AI coding tool generated files
-apps/api/.agents/
-apps/api/.claude/
-apps/api/.windsurf/
-apps/api/skills-lock.json
 
+# Prisma AI coding tool generated files
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
+"@ | Set-Content "apps/api/.gitignore"

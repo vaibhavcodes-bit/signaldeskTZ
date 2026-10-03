@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: signaldesk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: signaldesk
+      POSTGRES_PASSWORD: signaldesk_dev
+      POSTGRES_DB: signaldesk
+    ports:
+      - "5433:5432"
+    volumes:
+      - signaldesk_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U signaldesk -d signaldesk"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  signaldesk_postgres_data:

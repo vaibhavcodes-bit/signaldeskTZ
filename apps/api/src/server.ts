@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import dotenv from "dotenv";
+import { companyRoutes } from "./routes/company.routes.js";
 
 dotenv.config();
 
@@ -11,6 +12,8 @@ const app = Fastify({
 await app.register(cors, {
   origin: true,
 });
+
+await app.register(companyRoutes);
 
 app.get("/health", async () => {
   return {

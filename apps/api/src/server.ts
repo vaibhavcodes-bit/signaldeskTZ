@@ -1,38 +1,21 @@
-import Fastify from "fastify";
-import cors from "@fastify/cors";
-import dotenv from "dotenv";
-import { companyRoutes } from "./routes/company.routes.js";
+import { buildApp } from "./app.js";
 
-dotenv.config();
+const app = buildApp();
 
-const app = Fastify({
-  logger: true,
-});
+const start = async () => {
+  try {
+    await app.listen({
+      port: 4000,
+      host: "0.0.0.0",
+    });
 
-await app.register(cors, {
-  origin: true,
-});
+    console.log(
+      "API running on http://localhost:4000",
+    );
+  } catch (error) {
+    app.log.error(error);
+    process.exit(1);
+  }
+};
 
-await app.register(companyRoutes);
-
-app.get("/health", async () => {
-  return {
-    success: true,
-    service: "signaldesk-api",
-    status: "healthy",
-  };
-});
-
-const port = Number(process.env.PORT) || 4000;
-
-try {
-  await app.listen({
-    port,
-    host: "0.0.0.0",
-  });
-
-  console.log(`API running on http://localhost:${port}`);
-} catch (error) {
-  app.log.error(error);
-  process.exit(1);
-}
+start();

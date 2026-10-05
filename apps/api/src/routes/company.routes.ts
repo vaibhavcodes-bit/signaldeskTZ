@@ -1,26 +1,41 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../lib/prisma.js";
+import {
+  createCompanySchema,
+  updateCompanySchema,
+  companyQuerySchema,
+} from "../schemas/company.schema.js";
 
 export async function companyRoutes(app: FastifyInstance) {
+  // ============================================
   // CREATE COMPANY
-  app.post("/companies", async (request, reply) => {
-    const body = request.body as {
-      name: string;
-      websiteUrl: string;
-      description?: string;
-      industry?: string;
-      location?: string;
-      employeeCount?: number;
-    };
+  // ============================================
 
-    if (!body.name || !body.websiteUrl) {
+  app.post("/companies", async (request, reply) => {
+    // -----------------------------
+    // 1. Validate request body
+    // -----------------------------
+
+    const result = createCompanySchema.safeParse(request.body);
+
+    if (!result.success) {
       return reply.status(400).send({
         success: false,
-        message: "name and websiteUrl are required",
+        message: "Validation failed",
+        errors: result.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
       });
     }
 
+    const body = result.data;
+
     try {
+      // -----------------------------
+      // 2. Create company
+      // -----------------------------
+
       const company = await prisma.company.create({
         data: {
           name: body.name,
@@ -46,18 +61,128 @@ export async function companyRoutes(app: FastifyInstance) {
     }
   });
 
+  // ============================================
   // GET ALL COMPANIES
+  // SEARCH / FILTER / PAGINATION
+  // ============================================
+
   app.get("/companies", async (request, reply) => {
-    try {
-      const companies = await prisma.company.findMany({
-        orderBy: {
-          createdAt: "desc",
-        },
+    // -----------------------------
+    // 1. Validate query parameters
+    // -----------------------------
+
+    const result = companyQuerySchema.safeParse(request.query);
+
+    if (!result.success) {
+      return reply.status(400).send({
+        success: false,
+        message: "Validation failed",
+        errors: result.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
       });
+    }
+
+    const {
+      search,
+      industry,
+      location,
+      page,
+      limit,
+    } = result.data;
+
+    try {
+      // -----------------------------
+      // 2. Build filters
+      // -----------------------------
+
+      const where = {
+        ...(search
+          ? {
+              OR: [
+                {
+                  name: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+                {
+                  description: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+                {
+                  websiteUrl: {
+                    contains: search,
+                    mode: "insensitive" as const,
+                  },
+                },
+              ],
+            }
+          : {}),
+
+        ...(industry
+          ? {
+              industry: {
+                contains: industry,
+                mode: "insensitive" as const,
+              },
+            }
+          : {}),
+
+        ...(location
+          ? {
+              location: {
+                contains: location,
+                mode: "insensitive" as const,
+              },
+            }
+          : {}),
+      };
+
+      // -----------------------------
+      // 3. Pagination
+      // -----------------------------
+
+      const skip = (page - 1) * limit;
+
+      // -----------------------------
+      // 4. Get companies + total
+      // -----------------------------
+
+      const [companies, total] = await Promise.all([
+        prisma.company.findMany({
+          where,
+          orderBy: {
+            createdAt: "desc",
+          },
+          skip,
+          take: limit,
+        }),
+
+        prisma.company.count({
+          where,
+        }),
+      ]);
+
+      const totalPages =
+        total === 0 ? 0 : Math.ceil(total / limit);
+
+      // -----------------------------
+      // 5. Response
+      // -----------------------------
 
       return {
         success: true,
         data: companies,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
       };
     } catch (error) {
       request.log.error(error);
@@ -69,7 +194,10 @@ export async function companyRoutes(app: FastifyInstance) {
     }
   });
 
+  // ============================================
   // GET COMPANY BY ID
+  // ============================================
+
   app.get("/companies/:id", async (request, reply) => {
     const { id } = request.params as {
       id: string;
@@ -77,7 +205,9 @@ export async function companyRoutes(app: FastifyInstance) {
 
     try {
       const company = await prisma.company.findUnique({
-        where: { id },
+        where: {
+          id,
+        },
       });
 
       if (!company) {
@@ -101,24 +231,43 @@ export async function companyRoutes(app: FastifyInstance) {
     }
   });
 
+  // ============================================
   // UPDATE COMPANY
+  // ============================================
+
   app.patch("/companies/:id", async (request, reply) => {
     const { id } = request.params as {
       id: string;
     };
 
-    const body = request.body as {
-      name?: string;
-      websiteUrl?: string;
-      description?: string;
-      industry?: string;
-      location?: string;
-      employeeCount?: number;
-    };
+    // -----------------------------
+    // 1. Validate request body
+    // -----------------------------
+
+    const result = updateCompanySchema.safeParse(request.body);
+
+    if (!result.success) {
+      return reply.status(400).send({
+        success: false,
+        message: "Validation failed",
+        errors: result.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
+      });
+    }
+
+    const body = result.data;
 
     try {
+      // -----------------------------
+      // 2. Update company
+      // -----------------------------
+
       const company = await prisma.company.update({
-        where: { id },
+        where: {
+          id,
+        },
         data: body,
       });
 
@@ -136,7 +285,10 @@ export async function companyRoutes(app: FastifyInstance) {
     }
   });
 
+  // ============================================
   // DELETE COMPANY
+  // ============================================
+
   app.delete("/companies/:id", async (request, reply) => {
     const { id } = request.params as {
       id: string;
@@ -144,7 +296,9 @@ export async function companyRoutes(app: FastifyInstance) {
 
     try {
       await prisma.company.delete({
-        where: { id },
+        where: {
+          id,
+        },
       });
 
       return {

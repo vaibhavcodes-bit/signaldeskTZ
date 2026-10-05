@@ -3,6 +3,9 @@ import rateLimit from "@fastify/rate-limit";
 
 import { companyRoutes } from "./routes/company.routes.js";
 import {
+  opportunitySignalRoutes,
+} from "./routes/opportunity-signal.routes.js";
+import {
   companyIntelligenceRoutes,
 } from "./routes/company-intelligence.routes.js";
 
@@ -124,7 +127,7 @@ export const buildApp = (): FastifyInstance => {
 
   app.register(companyRoutes);
   app.register(companyIntelligenceRoutes);
-
+  app.register(opportunitySignalRoutes);
   // ============================================================
   // HEALTH CHECK
   // ============================================================
